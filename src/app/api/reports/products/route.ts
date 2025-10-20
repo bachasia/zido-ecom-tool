@@ -76,23 +76,34 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get revenue data for products (simplified - using order totals)
-    const revenueData = await prisma.$queryRaw`
+    // Get revenue data for products from OrderItem table
+    const revenueData: any[] = await prisma.$queryRaw`
       SELECT 
-        p.woo_id as product_id,
-        COUNT(o.id) as order_count,
-        SUM(o.total) as total_revenue
+        p.wooId as product_id,
+        p.name as product_name,
+        COUNT(DISTINCT oi.orderId) as order_count,
+        SUM(oi.total) as total_revenue,
+        SUM(oi.quantity) as total_quantity
       FROM products p
-      LEFT JOIN orders o ON p.woo_id = o.woo_id AND p.store_id = o.store_id
-      WHERE p.store_id = ${store.id}
-      GROUP BY p.woo_id
+      LEFT JOIN order_items oi ON p.id = oi.productId
+      WHERE p.storeId = ${store.id}
+      GROUP BY p.wooId, p.name
     `
+    
+    // Convert BigInt values to Number for JSON serialization
+    const serializedRevenueData = revenueData.map((item: any) => ({
+      product_id: Number(item.product_id),
+      product_name: item.product_name,
+      order_count: Number(item.order_count || 0),
+      total_revenue: Number(item.total_revenue || 0),
+      total_quantity: Number(item.total_quantity || 0)
+    }))
 
     return NextResponse.json({
       success: true,
       data: {
         products,
-        revenueData,
+        revenueData: serializedRevenueData,
         pagination: {
           page,
           limit,

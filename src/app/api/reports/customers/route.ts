@@ -63,20 +63,27 @@ export async function GET(request: NextRequest) {
     // Get customer spending data (scoped to store)
     const customerStats = await prisma.$queryRaw`
       SELECT 
-        c.woo_id as customer_id,
+        c.wooId as customer_id,
         COUNT(o.id) as order_count,
         SUM(o.total) as total_spent
       FROM customers c
-      LEFT JOIN orders o ON c.woo_id = o.woo_id AND c.store_id = o.store_id
-      WHERE c.store_id = ${store.id}
-      GROUP BY c.woo_id
+      LEFT JOIN orders o ON c.id = o.customerId
+      WHERE c.storeId = ${store.id}
+      GROUP BY c.wooId
     `
+
+    // Convert BigInt values to numbers for JSON serialization
+    const serializedCustomerStats = customerStats.map((stat: any) => ({
+      customer_id: Number(stat.customer_id),
+      order_count: Number(stat.order_count),
+      total_spent: Number(stat.total_spent)
+    }))
 
     return NextResponse.json({
       success: true,
       data: {
         customers,
-        customerStats,
+        customerStats: serializedCustomerStats,
         pagination: {
           page,
           limit,

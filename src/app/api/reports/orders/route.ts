@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get orders with pagination
+    // Get orders with pagination and include relationships
     const [orders, totalCount] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -70,6 +70,14 @@ export async function GET(request: NextRequest) {
         take: limit,
         orderBy: {
           [sortBy]: sortOrder
+        },
+        include: {
+          orderItems: {
+            include: {
+              product: true
+            }
+          },
+          customer: true
         }
       }),
       prisma.order.count({ where })

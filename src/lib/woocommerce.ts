@@ -188,16 +188,26 @@ function getMockData(path: string) {
         {
           id: 1,
           name: 'Sample Product 1',
+          sku: 'SAMPLE-001',
           price: '29.99',
           status: 'publish',
-          date_created: new Date().toISOString()
+          short_description: 'A great sample product',
+          total_sales: 150,
+          images: [{ src: 'https://via.placeholder.com/150' }],
+          date_created: new Date().toISOString(),
+          date_modified: new Date().toISOString()
         },
         {
           id: 2,
           name: 'Sample Product 2',
+          sku: 'SAMPLE-002',
           price: '49.99',
           status: 'publish',
-          date_created: new Date().toISOString()
+          short_description: 'Another excellent product',
+          total_sales: 89,
+          images: [{ src: 'https://via.placeholder.com/150' }],
+          date_created: new Date().toISOString(),
+          date_modified: new Date().toISOString()
         }
       ];
     case '/customers':

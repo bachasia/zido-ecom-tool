@@ -88,7 +88,7 @@ export function KPIGrid({ data, loading }: KPIGridProps) {
       <KPICard
         title="Total Customers"
         value={data.customersCount}
-        subtitle="Registered customers"
+        subtitle="Customers who purchased in selected period"
         icon="👥"
         loading={loading}
       />

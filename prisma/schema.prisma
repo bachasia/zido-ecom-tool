@@ -147,8 +147,16 @@ model Product {
   id         String   @id @default(cuid())
   wooId      Int
   name       String
+  sku        String?       // Product SKU
   price      Float?
   status     String?
+  description String?      // Product description (short)
+  imageUrl    String?      // Featured image URL (thumbnail)
+  
+  // Sales tracking
+  totalSalesWoo Int?        // Total sales count from WooCommerce API (total_sales field)
+  totalSold     Int?        // Computed from OrderItem aggregates for this store
+  
   dateCreated DateTime
   dateUpdated DateTime @updatedAt
   createdAt  DateTime @default(now())

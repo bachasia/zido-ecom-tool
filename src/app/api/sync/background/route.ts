@@ -451,6 +451,23 @@ async function performBackgroundSync(storeId: string, store: any) {
     let productsCount = 0
     for (const product of products) {
       try {
+        // Extract featured image URL from images array
+        const imageUrl = product.images && product.images.length > 0 
+          ? product.images[0].src 
+          : null
+        
+        const productData = {
+          name: product.name || '',
+          sku: product.sku || null,
+          price: parseFloat(product.price) || null,
+          status: product.status || 'draft',
+          description: product.short_description || null,
+          imageUrl: imageUrl,
+          totalSalesWoo: product.total_sales || null,
+          dateCreated: new Date(product.date_created),
+          dateUpdated: new Date(product.date_modified)
+        }
+        
         await prisma.product.upsert({
           where: {
             storeId_wooId: {
@@ -458,21 +475,11 @@ async function performBackgroundSync(storeId: string, store: any) {
               wooId: product.id
             }
           },
-          update: {
-            name: product.name || '',
-            price: parseFloat(product.price) || 0,
-            status: product.status || 'draft',
-            dateCreated: new Date(product.date_created),
-            dateUpdated: new Date(product.date_modified)
-          },
+          update: productData,
           create: {
+            ...productData,
             storeId: store.id,
-            wooId: product.id,
-            name: product.name || '',
-            price: parseFloat(product.price) || 0,
-            status: product.status || 'draft',
-            dateCreated: new Date(product.date_created),
-            dateUpdated: new Date(product.date_modified)
+            wooId: product.id
           }
         })
         
@@ -531,6 +538,30 @@ async function performBackgroundSync(storeId: string, store: any) {
         customersCount++
       } catch (error) {
         console.error(`Error syncing customer ${customer.id}:`, error)
+      }
+    }
+
+    // Update totalSold for all products based on OrderItem aggregates
+    console.log('Calculating totalSold from OrderItem aggregates...')
+    const soldProducts: any[] = await prisma.$queryRaw`
+      SELECT 
+        productId,
+        SUM(quantity) as total_quantity
+      FROM order_items
+      WHERE productId IN (
+        SELECT id FROM products WHERE storeId = ${store.id}
+      )
+      GROUP BY productId
+    `
+    
+    for (const item of soldProducts) {
+      try {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { totalSold: Number(item.total_quantity || 0) }
+        })
+      } catch (error) {
+        console.error(`Error updating totalSold for product ${item.productId}:`, error)
       }
     }
 

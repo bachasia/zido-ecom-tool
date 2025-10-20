@@ -29,13 +29,14 @@ interface DashboardData {
     date: string
     revenue: number
   }>
-  ordersByStatus: Array<{
-    status: string
-    count: number
+  averageOrderValue: Array<{
+    date: string
+    avgValue: number
+    orderCount: number
   }>
 }
 
-type DateRange = '7days' | '30days' | 'custom'
+type DateRange = 'today' | 'yesterday' | '7days' | '30days' | 'custom'
 
 export default function Dashboard() {
   return (
@@ -67,7 +68,13 @@ function DashboardContent() {
       let startDate = ''
       let endDate = ''
       
-      if (dateRange === '7days') {
+      if (dateRange === 'today') {
+        startDate = format(new Date(), 'yyyy-MM-dd')
+        endDate = format(new Date(), 'yyyy-MM-dd')
+      } else if (dateRange === 'yesterday') {
+        startDate = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+        endDate = format(subDays(new Date(), 1), 'yyyy-MM-dd')
+      } else if (dateRange === '7days') {
         startDate = format(subDays(new Date(), 7), 'yyyy-MM-dd')
         endDate = format(new Date(), 'yyyy-MM-dd')
       } else if (dateRange === '30days') {
@@ -171,6 +178,20 @@ function DashboardContent() {
             <div className="flex flex-wrap gap-4 items-end">
               <div className="flex gap-2">
                 <Button
+                  variant={dateRange === 'today' ? 'default' : 'outline'}
+                  onClick={() => setDateRange('today')}
+                  size="sm"
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={dateRange === 'yesterday' ? 'default' : 'outline'}
+                  onClick={() => setDateRange('yesterday')}
+                  size="sm"
+                >
+                  Yesterday
+                </Button>
+                <Button
                   variant={dateRange === '7days' ? 'default' : 'outline'}
                   onClick={() => setDateRange('7days')}
                   size="sm"
@@ -266,26 +287,38 @@ function DashboardContent() {
             </CardContent>
           </Card>
 
-          {/* Orders by Status Chart */}
+          {/* Average Order Value Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Orders by Status</CardTitle>
-              <CardDescription>Order distribution by status</CardDescription>
+              <CardTitle>Average Order Value</CardTitle>
+              <CardDescription>Daily average order value over time</CardDescription>
             </CardHeader>
             <CardContent>
-              {data?.ordersByStatus && data.ordersByStatus.length > 0 ? (
+              {data?.averageOrderValue && data.averageOrderValue.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.ordersByStatus}>
+                  <BarChart data={data.averageOrderValue}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="status" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#10b981" />
+                    <XAxis 
+                      dataKey="date"
+                      tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                    />
+                    <YAxis 
+                      tickFormatter={(value) => `$${value.toFixed(0)}`}
+                    />
+                    <Tooltip 
+                      labelFormatter={(value) => format(new Date(value), 'MMM dd, yyyy')}
+                      formatter={(value: any, name: string) => {
+                        if (name === 'avgValue') return [`$${Number(value).toFixed(2)}`, 'Avg Order Value']
+                        if (name === 'orderCount') return [value, 'Orders']
+                        return [value, name]
+                      }}
+                    />
+                    <Bar dataKey="avgValue" fill="#10b981" name="Avg Order Value" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-[300px] flex items-center justify-center text-gray-500">
-                  No order status data available
+                  No average order value data available
                 </div>
               )}
             </CardContent>

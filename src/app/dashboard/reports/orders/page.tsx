@@ -4,21 +4,91 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DashboardLayout } from '@/components/dashboard-layout'
-import { DataTable, DateRangeFilter, StatusFilter } from '@/components/data-table'
+import { DateRangeFilter, StatusFilter } from '@/components/data-table'
 import { LoadingState, ErrorState } from '@/components/loading-states'
 import { EmptyStoreState } from '@/components/empty-store-state'
 import { StoreWrapper } from '@/components/store-wrapper'
 import { useStore } from '@/contexts/store-context'
-import Link from 'next/link'
+import OrdersTable from '@/components/orders/orders-table'
+
+interface OrderItem {
+  id: string
+  wooId: number
+  name: string
+  quantity: number
+  price: number
+  total: number
+  sku: string | null
+  product: {
+    id: string
+    name: string
+    sku: string | null
+  } | null
+}
+
+interface Customer {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+}
 
 interface Order {
-  id: number
+  id: string
   wooId: number
   name: string | null
   total: number
   status: string | null
   dateCreated: string
   dateUpdated: string
+  billingFirstName: string | null
+  billingLastName: string | null
+  billingEmail: string | null
+  billingPhone: string | null
+  billingCompany: string | null
+  billingAddress1: string | null
+  billingCity: string | null
+  billingState: string | null
+  billingPostcode: string | null
+  billingCountry: string | null
+  shippingFirstName: string | null
+  shippingLastName: string | null
+  shippingCompany: string | null
+  shippingAddress1: string | null
+  shippingCity: string | null
+  shippingState: string | null
+  shippingPostcode: string | null
+  shippingCountry: string | null
+  paymentMethod: string | null
+  paymentMethodTitle: string | null
+  transactionId: string | null
+  currency: string | null
+  discountTotal: number | null
+  shippingTotal: number | null
+  taxTotal: number | null
+  subtotal: number | null
+  origin: string | null
+  source: string | null
+  sourceType: string | null
+  campaign: string | null
+  medium: string | null
+  deviceType: string | null
+  sessionPageViews: number | null
+  utmSource: string | null
+  utmMedium: string | null
+  utmCampaign: string | null
+  utmTerm: string | null
+  utmContent: string | null
+  referrer: string | null
+  landingPage: string | null
+  userAgent: string | null
+  ipAddress: string | null
+  country: string | null
+  city: string | null
+  customerId: string | null
+  storeId: string
+  orderItems: OrderItem[]
+  customer: Customer | null
 }
 
 interface OrdersReportData {
@@ -119,45 +189,6 @@ function OrdersReportContent() {
     fetchOrders()
   }, [sortBy, sortOrder, currentStoreId])
 
-  const columns = [
-    {
-      key: 'wooId',
-      label: 'Order ID',
-      sortable: true
-    },
-    {
-      key: 'name',
-      label: 'Order Number',
-      sortable: true
-    },
-    {
-      key: 'total',
-      label: 'Total',
-      sortable: true,
-      render: (value: number) => `$${value.toFixed(2)}`
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (value: string) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          value === 'completed' ? 'bg-green-100 text-green-800' :
-          value === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-          value === 'cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {value || 'Unknown'}
-        </span>
-      )
-    },
-    {
-      key: 'dateCreated',
-      label: 'Date Created',
-      sortable: true
-    }
-  ]
-
   if (!currentStoreId) {
     return (
       <DashboardLayout onSync={handleSync} syncing={false}>
@@ -234,14 +265,36 @@ function OrdersReportContent() {
 
         {/* Orders Table */}
         {data && (
-          <DataTable
-            data={data.orders}
-            columns={columns}
-            pagination={data.pagination}
-            onPageChange={handlePageChange}
-            onSort={handleSort}
-            loading={loading}
-          />
+          <div className="space-y-4">
+            <OrdersTable orders={data.orders} />
+            
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Showing {((data.pagination.page - 1) * data.pagination.limit) + 1} to{' '}
+                {Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalCount)} of{' '}
+                {data.pagination.totalCount} orders
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(data.pagination.page - 1)}
+                  disabled={data.pagination.page <= 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(data.pagination.page + 1)}
+                  disabled={data.pagination.page >= data.pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>
