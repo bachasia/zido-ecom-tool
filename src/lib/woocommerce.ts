@@ -308,9 +308,18 @@ function buildWooClient(creds: WooCredentials) {
     const metaData = order.meta_data || [];
     const utmParams: any = {};
     
+    // Extract all UTM and marketing-related meta data
     metaData.forEach((meta: any) => {
-      if (meta.key && meta.key.startsWith('utm_')) {
-        utmParams[meta.key] = meta.value;
+      if (meta.key) {
+        // Handle both _utm_* and utm_* formats
+        const key = meta.key.replace(/^_/, ''); // Remove leading underscore
+        if (key.startsWith('utm_')) {
+          utmParams[key] = meta.value;
+        }
+        // Also capture other marketing fields
+        if (key.includes('source') || key.includes('medium') || key.includes('campaign')) {
+          utmParams[key] = meta.value;
+        }
       }
     });
 
@@ -347,7 +356,17 @@ function buildWooClient(creds: WooCredentials) {
 
   return {
     getOrders: async (startDate?: string, endDate?: string) => {
-      const orders = await fetchAll('/orders', { after: startDate, before: endDate });
+      // Fetch orders with full details including line_items, billing, shipping, meta_data
+      const orders = await fetchAll('/orders', { 
+        after: startDate, 
+        before: endDate,
+        // Ensure we get all order details
+        per_page: 50 // Already set in fetchAll, but explicit for clarity
+      });
+      
+      console.log(`Fetched ${orders.length} orders with full details`);
+      
+      // Enrich each order with marketing attribution
       return orders.map(enrichOrderWithAttribution);
     },
     getProducts: () => fetchAll('/products'),
