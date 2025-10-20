@@ -1,0 +1,19 @@
+-- AlterTable
+ALTER TABLE "orders" ADD COLUMN "campaign" TEXT;
+ALTER TABLE "orders" ADD COLUMN "city" TEXT;
+ALTER TABLE "orders" ADD COLUMN "country" TEXT;
+ALTER TABLE "orders" ADD COLUMN "deviceType" TEXT;
+ALTER TABLE "orders" ADD COLUMN "ipAddress" TEXT;
+ALTER TABLE "orders" ADD COLUMN "landingPage" TEXT;
+ALTER TABLE "orders" ADD COLUMN "medium" TEXT;
+ALTER TABLE "orders" ADD COLUMN "origin" TEXT;
+ALTER TABLE "orders" ADD COLUMN "referrer" TEXT;
+ALTER TABLE "orders" ADD COLUMN "sessionPageViews" INTEGER;
+ALTER TABLE "orders" ADD COLUMN "source" TEXT;
+ALTER TABLE "orders" ADD COLUMN "sourceType" TEXT;
+ALTER TABLE "orders" ADD COLUMN "userAgent" TEXT;
+ALTER TABLE "orders" ADD COLUMN "utmCampaign" TEXT;
+ALTER TABLE "orders" ADD COLUMN "utmContent" TEXT;
+ALTER TABLE "orders" ADD COLUMN "utmMedium" TEXT;
+ALTER TABLE "orders" ADD COLUMN "utmSource" TEXT;
+ALTER TABLE "orders" ADD COLUMN "utmTerm" TEXT;

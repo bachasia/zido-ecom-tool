@@ -1,0 +1,239 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Store {
+  id            String   @id @default(cuid())
+  name          String
+  url           String   @unique // https://example.com (no trailing slash)
+  
+  // Encrypted credentials using AES-256-GCM
+  consumerKeyCiphertext String // encrypted consumer key
+  consumerKeyIv        String // IV for consumer key encryption
+  consumerKeyTag       String // authentication tag for consumer key
+  
+  consumerSecretCiphertext String // encrypted consumer secret
+  consumerSecretIv        String // IV for consumer secret encryption
+  consumerSecretTag       String // authentication tag for consumer secret
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // owner (if using NextAuth User model)
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  orders    Order[]
+  products  Product[]
+  customers Customer[]
+
+  @@map("stores")
+}
+
+model Order {
+  id         String   @id @default(cuid())
+  wooId      Int
+  name       String?  // Order number (e.g., #1001)
+  total      Float
+  status     String?  // Order status (completed, processing, pending, etc.)
+  dateCreated DateTime
+  dateUpdated DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Billing details
+  billingFirstName String?
+  billingLastName  String?
+  billingEmail     String?
+  billingPhone     String?
+  billingCompany   String?
+  billingAddress1  String?
+  billingAddress2  String?
+  billingCity      String?
+  billingState     String?
+  billingPostcode  String?
+  billingCountry   String?
+
+  // Shipping details
+  shippingFirstName String?
+  shippingLastName  String?
+  shippingCompany   String?
+  shippingAddress1  String?
+  shippingAddress2  String?
+  shippingCity      String?
+  shippingState     String?
+  shippingPostcode  String?
+  shippingCountry   String?
+
+  // Payment details
+  paymentMethod     String?  // Payment method (credit card, paypal, etc.)
+  paymentMethodTitle String? // Payment method display name
+  transactionId     String?  // Transaction ID from payment gateway
+
+  // Order attribution
+  currency          String?  // Order currency (USD, EUR, etc.)
+  discountTotal     Float?   // Total discount applied
+  shippingTotal     Float?   // Shipping cost
+  taxTotal          Float?   // Tax amount
+  subtotal          Float?   // Subtotal before tax/shipping
+
+  // Marketing Attribution & Analytics
+  origin            String?  // Origin of the order (e.g., "Google Shopping")
+  source            String?  // Traffic source (e.g., "google_shopping")
+  sourceType        String?  // Source type (e.g., "utm", "organic", "direct")
+  campaign          String?  // Campaign name (e.g., "fandomgift")
+  medium            String?  // Marketing medium (e.g., "cpc", "email", "social")
+  deviceType        String?  // Device type (e.g., "Mobile", "Desktop", "Tablet")
+  sessionPageViews  Int?     // Number of page views in the session
+  utmSource         String?  // UTM source parameter
+  utmMedium         String?  // UTM medium parameter
+  utmCampaign       String?  // UTM campaign parameter
+  utmTerm           String?  // UTM term parameter
+  utmContent        String?  // UTM content parameter
+  referrer          String?  // HTTP referrer
+  landingPage       String?  // First page visited in session
+  userAgent         String?  // User agent string
+  ipAddress         String?  // Customer IP address
+  country           String?  // Customer country (from IP)
+  city              String?  // Customer city (from IP)
+
+  // Customer relationship
+  customerId        String?  // Link to Customer model
+  customer          Customer? @relation(fields: [customerId], references: [id])
+
+  // Store relationship
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Order items relationship
+  orderItems OrderItem[]
+
+  @@unique([storeId, wooId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  wooId      Int      // WooCommerce order item ID
+  name       String   // Product name
+  quantity   Int      // Quantity ordered
+  price      Float    // Unit price
+  total      Float    // Total price (quantity * price)
+  sku        String?  // Product SKU
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relationships
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  @@unique([orderId, wooId])
+  @@map("order_items")
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  wooId      Int
+  name       String
+  price      Float?
+  status     String?
+  dateCreated DateTime
+  dateUpdated DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Relationships
+  orderItems OrderItem[]
+
+  @@unique([storeId, wooId])
+  @@map("products")
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  wooId      Int
+  firstName  String?
+  lastName   String?
+  email      String?
+  dateCreated DateTime
+  dateUpdated DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Relationships
+  orders Order[]
+
+  @@unique([storeId, wooId])
+  @@map("customers")
+}
+
+// NextAuth.js models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  stores        Store[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
