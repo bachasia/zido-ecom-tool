@@ -127,7 +127,9 @@ export async function runUnifiedSync(
           created: productsResult.value.created,
           updated: productsResult.value.updated,
         };
+        console.log('Products sync result:', productsResult.value);
       } else {
+        console.error('Products sync failed:', productsResult.reason);
         errors.push(`Products sync failed: ${productsResult.reason}`);
       }
 
@@ -138,7 +140,9 @@ export async function runUnifiedSync(
           updated: ordersResult.value.updated,
           orderItemsCreated: ordersResult.value.orderItemsCreated,
         };
+        console.log('Orders sync result:', ordersResult.value);
       } else {
+        console.error('Orders sync failed:', ordersResult.reason);
         errors.push(`Orders sync failed: ${ordersResult.reason}`);
       }
 
@@ -148,7 +152,9 @@ export async function runUnifiedSync(
           created: customersResult.value.created,
           updated: customersResult.value.updated,
         };
+        console.log('Customers sync result:', customersResult.value);
       } else {
+        console.error('Customers sync failed:', customersResult.reason);
         errors.push(`Customers sync failed: ${customersResult.reason}`);
       }
 
