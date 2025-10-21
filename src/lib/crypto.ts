@@ -24,9 +24,8 @@ interface EncryptedPayload {
  * @returns Object containing iv, tag, and ciphertext (all base64 encoded)
  */
 export function encrypt(plaintext: string): EncryptedPayload {
-  if (!plaintext) {
-    throw new Error('Plaintext cannot be empty')
-  }
+  // Allow empty strings for placeholder encryption (e.g., DB-only mode)
+  const textToEncrypt = plaintext || '__EMPTY__'
 
   // Derive a proper key from DATA_KEY
   const key = crypto.scryptSync(DATA_KEY, 'salt', KEY_LENGTH)
@@ -38,7 +37,7 @@ export function encrypt(plaintext: string): EncryptedPayload {
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
   
   // Encrypt the plaintext
-  let ciphertext = cipher.update(plaintext, 'utf8', 'base64')
+  let ciphertext = cipher.update(textToEncrypt, 'utf8', 'base64')
   ciphertext += cipher.final('base64')
   
   // For CBC mode, we don't have an auth tag, so we'll use a placeholder
@@ -74,6 +73,11 @@ export function decrypt(payload: EncryptedPayload): string {
     // Decrypt the ciphertext
     let plaintext = decipher.update(payload.ciphertext, 'base64', 'utf8')
     plaintext += decipher.final('utf8')
+    
+    // Handle placeholder for empty encrypted values (DB-only mode)
+    if (plaintext === '__EMPTY__') {
+      return ''
+    }
     
     return plaintext
   } catch (error) {
