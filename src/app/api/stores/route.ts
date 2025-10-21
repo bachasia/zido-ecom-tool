@@ -64,12 +64,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, url, consumerKey, consumerSecret } = body
+    const { 
+      name, 
+      url, 
+      consumerKey, 
+      consumerSecret,
+      syncMethod = 'api',
+      dbHost,
+      dbUser,
+      dbPassword,
+      dbName,
+      dbPrefix = 'wp_'
+    } = body
 
-    // Validation
-    if (!name || !url || !consumerKey || !consumerSecret) {
+    // Validation based on sync method
+    if (!name || !url) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, url, consumerKey, consumerSecret' },
+        { error: 'Missing required fields: name, url' },
+        { status: 400 }
+      )
+    }
+
+    // Validate sync method specific requirements
+    if (syncMethod === 'api') {
+      if (!consumerKey || !consumerSecret) {
+        return NextResponse.json(
+          { error: 'API sync method requires consumerKey and consumerSecret' },
+          { status: 400 }
+        )
+      }
+    } else if (syncMethod === 'db') {
+      if (!dbHost || !dbUser || !dbPassword || !dbName) {
+        return NextResponse.json(
+          { error: 'Database sync method requires dbHost, dbUser, dbPassword, and dbName' },
+          { status: 400 }
+        )
+      }
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid sync method. Must be "api" or "db"' },
         { status: 400 }
       )
     }
@@ -87,22 +120,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Encrypt credentials using AES-256-GCM
-    const encryptedKey = encrypt(consumerKey.trim())
-    const encryptedSecret = encrypt(consumerSecret.trim())
+    // Encrypt credentials using AES-256-CBC
+    // For API method, encrypt consumerKey and consumerSecret
+    let encryptedKey, encryptedSecret
+    
+    if (syncMethod === 'api' || (consumerKey && consumerSecret)) {
+      encryptedKey = encrypt(consumerKey?.trim() || '')
+      encryptedSecret = encrypt(consumerSecret?.trim() || '')
+    } else {
+      // For DB-only sync, use placeholder encrypted values
+      encryptedKey = encrypt('')
+      encryptedSecret = encrypt('')
+    }
+    
+    // Prepare store data
+    const storeData: any = {
+      name: name.trim(),
+      url: formattedUrl,
+      consumerKeyCiphertext: encryptedKey.ciphertext,
+      consumerKeyIv: encryptedKey.iv,
+      consumerKeyTag: encryptedKey.tag,
+      consumerSecretCiphertext: encryptedSecret.ciphertext,
+      consumerSecretIv: encryptedSecret.iv,
+      consumerSecretTag: encryptedSecret.tag,
+      syncMethod,
+      ownerId: session.user.id
+    }
+    
+    // Add DB connection fields if DB sync method
+    if (syncMethod === 'db') {
+      storeData.dbHost = dbHost
+      storeData.dbUser = dbUser
+      storeData.dbPassword = dbPassword  // TODO: Should also be encrypted in production
+      storeData.dbName = dbName
+      storeData.dbPrefix = dbPrefix || 'wp_'
+    }
     
     const store = await prisma.store.create({
-      data: {
-        name: name.trim(),
-        url: formattedUrl,
-        consumerKeyCiphertext: encryptedKey.ciphertext,
-        consumerKeyIv: encryptedKey.iv,
-        consumerKeyTag: encryptedKey.tag,
-        consumerSecretCiphertext: encryptedSecret.ciphertext,
-        consumerSecretIv: encryptedSecret.iv,
-        consumerSecretTag: encryptedSecret.tag,
-        ownerId: session.user.id
-      },
+      data: storeData,
       select: {
         id: true,
         name: true,

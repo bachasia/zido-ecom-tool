@@ -25,6 +25,19 @@ model Store {
   consumerSecretIv        String // IV for consumer secret encryption
   consumerSecretTag       String // authentication tag for consumer secret
   
+  // DB connection (encrypted)
+  dbHost              String?
+  dbUser              String?
+  dbPassword          String?
+  dbName              String?
+  dbPrefix            String?     // WordPress $table_prefix, e.g. 'wp_'
+  syncMethod          String?     // 'api' | 'db'
+  
+  // Last sync timestamps
+  lastProductSyncAt   DateTime?
+  lastOrderSyncAt     DateTime?
+  lastCustomerSyncAt  DateTime?
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

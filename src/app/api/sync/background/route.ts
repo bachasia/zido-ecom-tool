@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildWooClient } from '@/lib/woocommerce'
 import { decrypt } from '@/lib/crypto'
+import { runUnifiedSync } from '@/server/sync/orchestrator'
 
 // In-memory store for sync progress (in production, use Redis or database)
 const syncProgress = new Map<string, {
@@ -162,6 +163,40 @@ export async function GET(request: NextRequest) {
 
 // Background sync function
 async function performBackgroundSync(storeId: string, store: any) {
+  try {
+    const progress = syncProgress.get(storeId)!
+    
+    // Use unified sync orchestrator with progress callback
+    const result = await runUnifiedSync(storeId, (progressValue, message) => {
+      const currentProgress = syncProgress.get(storeId)
+      if (currentProgress) {
+        currentProgress.progress = progressValue
+        currentProgress.message = message
+        syncProgress.set(storeId, currentProgress)
+      }
+    })
+    
+    // Mark as completed
+    progress.progress = 100
+    progress.message = `Sync complete! Products: ${result.products.count}, Orders: ${result.orders.count}, Customers: ${result.customers.count}`
+    progress.status = 'completed'
+    progress.endTime = Date.now()
+    syncProgress.set(storeId, progress)
+    
+  } catch (error) {
+    console.error('Background sync error:', error)
+    const progress = syncProgress.get(storeId)
+    if (progress) {
+      progress.status = 'error'
+      progress.error = error instanceof Error ? error.message : 'Unknown error'
+      progress.endTime = Date.now()
+      syncProgress.set(storeId, progress)
+    }
+  }
+}
+
+// Legacy background sync function (kept for reference, can be removed later)
+async function performBackgroundSyncLegacy(storeId: string, store: any) {
   try {
     const progress = syncProgress.get(storeId)!
     

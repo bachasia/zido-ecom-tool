@@ -19,10 +19,17 @@ export default function NewStorePage() {
     name: '',
     url: '',
     consumerKey: '',
-    consumerSecret: ''
+    consumerSecret: '',
+    syncMethod: 'api' as 'api' | 'db',
+    dbHost: '',
+    dbUser: '',
+    dbPassword: '',
+    dbName: '',
+    dbPrefix: 'wp_'
   })
   const [loading, setLoading] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [detectingPrefix, setDetectingPrefix] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,7 +94,44 @@ export default function NewStorePage() {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetectPrefix = async () => {
+    try {
+      setDetectingPrefix(true)
+      setError(null)
+      
+      const response = await fetch('/api/stores/detect-prefix', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dbHost: formData.dbHost,
+          dbUser: formData.dbUser,
+          dbPassword: formData.dbPassword,
+          dbName: formData.dbName,
+        }),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setFormData(prev => ({
+          ...prev,
+          dbPrefix: result.prefix
+        }))
+        alert(`Prefix detected: ${result.prefix}${result.hasWooCommerce ? '\nWooCommerce tables found!' : '\nWarning: WooCommerce tables not found'}`)
+      } else {
+        alert(`Failed to detect prefix: ${result.error || result.message}`)
+      }
+    } catch (error) {
+      console.error('Detect prefix error:', error)
+      alert('Failed to detect prefix. Please enter it manually.')
+    } finally {
+      setDetectingPrefix(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -174,8 +218,29 @@ export default function NewStorePage() {
                     </p>
                   </div>
 
+                  {/* Sync Method Selector */}
                   <div>
-                    <Label htmlFor="consumerKey">Consumer Key</Label>
+                    <Label htmlFor="syncMethod">Sync Method</Label>
+                    <select
+                      id="syncMethod"
+                      name="syncMethod"
+                      value={formData.syncMethod}
+                      onChange={handleInputChange}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="api">REST API (Recommended)</option>
+                      <option value="db">Direct MySQL (Advanced)</option>
+                    </select>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {formData.syncMethod === 'api' 
+                        ? 'Use WooCommerce REST API for syncing (requires API keys)'
+                        : 'Connect directly to MySQL database (faster, requires DB access)'}
+                    </p>
+                  </div>
+
+                  {/* API Credentials (shown for both methods) */}
+                  <div>
+                    <Label htmlFor="consumerKey">Consumer Key {formData.syncMethod === 'db' && '(Optional)'}</Label>
                     <Input
                       id="consumerKey"
                       name="consumerKey"
@@ -183,7 +248,7 @@ export default function NewStorePage() {
                       placeholder="ck_..."
                       value={formData.consumerKey}
                       onChange={handleInputChange}
-                      required
+                      required={formData.syncMethod === 'api'}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       Your WooCommerce REST API consumer key
@@ -191,7 +256,7 @@ export default function NewStorePage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="consumerSecret">Consumer Secret</Label>
+                    <Label htmlFor="consumerSecret">Consumer Secret {formData.syncMethod === 'db' && '(Optional)'}</Label>
                     <Input
                       id="consumerSecret"
                       name="consumerSecret"
@@ -199,12 +264,108 @@ export default function NewStorePage() {
                       placeholder="cs_..."
                       value={formData.consumerSecret}
                       onChange={handleInputChange}
-                      required
+                      required={formData.syncMethod === 'api'}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       Your WooCommerce REST API consumer secret
                     </p>
                   </div>
+
+                  {/* Database Connection Fields (shown only for DB sync method) */}
+                  {formData.syncMethod === 'db' && (
+                    <>
+                      <div className="border-t pt-4 mt-4">
+                        <h3 className="text-lg font-medium mb-4">Database Connection</h3>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="dbHost">Database Host</Label>
+                            <Input
+                              id="dbHost"
+                              name="dbHost"
+                              type="text"
+                              placeholder="localhost or mysql.example.com"
+                              value={formData.dbHost}
+                              onChange={handleInputChange}
+                              required
+                            />
+                            <p className="text-sm text-muted-foreground mt-1">
+                              MySQL server hostname or IP address
+                            </p>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="dbName">Database Name</Label>
+                            <Input
+                              id="dbName"
+                              name="dbName"
+                              type="text"
+                              placeholder="wp_database"
+                              value={formData.dbName}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="dbUser">Database Username</Label>
+                            <Input
+                              id="dbUser"
+                              name="dbUser"
+                              type="text"
+                              placeholder="wp_user"
+                              value={formData.dbUser}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="dbPassword">Database Password</Label>
+                            <Input
+                              id="dbPassword"
+                              name="dbPassword"
+                              type="password"
+                              placeholder="••••••••"
+                              value={formData.dbPassword}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="dbPrefix">Table Prefix</Label>
+                            <div className="flex space-x-2">
+                              <Input
+                                id="dbPrefix"
+                                name="dbPrefix"
+                                type="text"
+                                placeholder="wp_"
+                                value={formData.dbPrefix}
+                                onChange={handleInputChange}
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleDetectPrefix}
+                                disabled={detectingPrefix || !formData.dbHost || !formData.dbUser || !formData.dbPassword || !formData.dbName}
+                              >
+                                {detectingPrefix ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  'Detect'
+                                )}
+                              </Button>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              WordPress table prefix (usually wp_)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex justify-between">
