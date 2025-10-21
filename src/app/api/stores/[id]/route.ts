@@ -35,6 +35,12 @@ export async function GET(
         consumerSecretCiphertext: true,
         consumerSecretIv: true,
         consumerSecretTag: true,
+        syncMethod: true,
+        dbHost: true,
+        dbUser: true,
+        dbPassword: true,
+        dbName: true,
+        dbPrefix: true,
         createdAt: true,
         updatedAt: true
       }
@@ -68,6 +74,12 @@ export async function GET(
         url: store.url,
         consumerKey: decryptedKey,
         consumerSecret: decryptedSecret,
+        syncMethod: store.syncMethod || 'api',
+        dbHost: store.dbHost || '',
+        dbUser: store.dbUser || '',
+        dbPassword: store.dbPassword || '',
+        dbName: store.dbName || '',
+        dbPrefix: store.dbPrefix || 'wp_',
         createdAt: store.createdAt,
         updatedAt: store.updatedAt
       }
@@ -99,7 +111,18 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { name, url, consumerKey, consumerSecret } = body
+    const { 
+      name, 
+      url, 
+      consumerKey, 
+      consumerSecret,
+      syncMethod,
+      dbHost,
+      dbUser,
+      dbPassword,
+      dbName,
+      dbPrefix
+    } = body
 
     // Check if store exists and user owns it
     const existingStore = await prisma.store.findFirst({
@@ -138,18 +161,41 @@ export async function PUT(
       }
     }
     
-    if (consumerKey !== undefined) {
+    // Update sync method
+    if (syncMethod !== undefined) {
+      updateData.syncMethod = syncMethod
+    }
+    
+    // Update API credentials if provided
+    if (consumerKey !== undefined && consumerKey !== '') {
       const encryptedKey = encrypt(consumerKey.trim())
       updateData.consumerKeyCiphertext = encryptedKey.ciphertext
       updateData.consumerKeyIv = encryptedKey.iv
       updateData.consumerKeyTag = encryptedKey.tag
     }
     
-    if (consumerSecret !== undefined) {
+    if (consumerSecret !== undefined && consumerSecret !== '') {
       const encryptedSecret = encrypt(consumerSecret.trim())
       updateData.consumerSecretCiphertext = encryptedSecret.ciphertext
       updateData.consumerSecretIv = encryptedSecret.iv
       updateData.consumerSecretTag = encryptedSecret.tag
+    }
+    
+    // Update DB connection fields if provided
+    if (dbHost !== undefined) {
+      updateData.dbHost = dbHost
+    }
+    if (dbUser !== undefined) {
+      updateData.dbUser = dbUser
+    }
+    if (dbPassword !== undefined) {
+      updateData.dbPassword = dbPassword
+    }
+    if (dbName !== undefined) {
+      updateData.dbName = dbName
+    }
+    if (dbPrefix !== undefined) {
+      updateData.dbPrefix = dbPrefix
     }
 
     const store = await prisma.store.update({
